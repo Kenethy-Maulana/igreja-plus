@@ -11,6 +11,7 @@ async function loadSession() {
   setLoading(true)
   
   try {
+    // 1. Verificar se há utilizador autenticado no Supabase Auth
     const { data: { user: supabaseUser } } = await supabase.auth.getUser()
 
     if (supabaseUser) {
@@ -26,7 +27,7 @@ async function loadSession() {
       console.log('🔵 [AUTH] Profile Data:', profileData)
       
       if (profileData && !profileError) {
-        // 🔒 Tenta buscar os branch_ids visíveis, mas NÃO QUEBRA se falhar
+        // Buscar os branch_ids visíveis
         let visibleBranchIds = [profileData.branch_id].filter(Boolean)
         
         try {
@@ -35,14 +36,11 @@ async function loadSession() {
           
           if (!rpcError && visibleBranches && visibleBranches.length > 0) {
             visibleBranchIds = visibleBranches.map(b => b.branch_id).filter(Boolean)
-          } else if (rpcError) {
-            console.warn('⚠️ [AUTH] RPC falhou, usando fallback:', rpcError.message)
           }
         } catch (rpcErr) {
           console.warn('⚠️ [AUTH] Erro ao chamar RPC, usando fallback')
         }
         
-        // Se não tiver branch_ids, usa o branch_id do perfil
         if (visibleBranchIds.length === 0 && profileData.branch_id) {
           visibleBranchIds = [profileData.branch_id]
         }
@@ -61,66 +59,80 @@ async function loadSession() {
           isSuperAdmin: !profileData.branch_id
         })
       } else {
-        console.warn('⚠️ [AUTH] Perfil não encontrado')
+        console.warn('⚠️ [AUTH] Perfil não encontrado no Supabase Auth')
         setProfile(null)
       }
     } else {
-      // Sistema antigo (localStorage)
+      // 2. Sistema antigo: verificar localStorage
       setUser(null)
       
       const storedUser = localStorage.getItem('church_user')
       const storedRole = localStorage.getItem('church_role')
 
+      console.log('🔵 [AUTH] Verificando localStorage:', { storedUser: !!storedUser, storedRole })
+
       if (storedUser && storedRole) {
-        const parsedUser = JSON.parse(storedUser)
-        
-        let branchName = 'Minha Igreja'
-        let branchParentId = null
-        
-        if (parsedUser.branch_id) {
-          const { data: branchData } = await supabase
-            .from('branches')
-            .select('name, parent_id')
-            .eq('id', parsedUser.branch_id)
-            .maybeSingle()
-          
-          if (branchData) {
-            branchName = branchData.name
-            branchParentId = branchData.parent_id
-          }
-        }
-        
-        let visibleBranchIds = [parsedUser.branch_id].filter(Boolean)
-        
         try {
-          const { data: visibleBranches } = await supabase
-            .rpc('get_visible_branch_ids', { p_user_id: parsedUser.id })
+          const parsedUser = JSON.parse(storedUser)
+          console.log('🔵 [AUTH] Utilizador encontrado no localStorage:', parsedUser)
           
-          if (visibleBranches && visibleBranches.length > 0) {
-            visibleBranchIds = visibleBranches.map(b => b.branch_id).filter(Boolean)
+          let branchName = 'Minha Igreja'
+          let branchParentId = null
+          
+          if (parsedUser.branch_id) {
+            const { data: branchData } = await supabase
+              .from('branches')
+              .select('name, parent_id')
+              .eq('id', parsedUser.branch_id)
+              .maybeSingle()
+            
+            if (branchData) {
+              branchName = branchData.name
+              branchParentId = branchData.parent_id
+            }
           }
-        } catch (err) {
-          console.warn('⚠️ [AUTH] Erro ao chamar RPC, usando fallback')
+          
+          let visibleBranchIds = [parsedUser.branch_id].filter(Boolean)
+          
+          try {
+            const { data: visibleBranches } = await supabase
+              .rpc('get_visible_branch_ids', { p_user_id: parsedUser.id })
+            
+            if (visibleBranches && visibleBranches.length > 0) {
+              visibleBranchIds = visibleBranches.map(b => b.branch_id).filter(Boolean)
+            }
+          } catch (err) {
+            console.warn('⚠️ [AUTH] Erro ao chamar RPC, usando fallback')
+          }
+          
+          if (visibleBranchIds.length === 0 && parsedUser.branch_id) {
+            visibleBranchIds = [parsedUser.branch_id]
+          }
+          
+          const newProfile = {
+            id: parsedUser.id,
+            full_name: parsedUser.full_name,
+            role: storedRole,
+            branch_id: parsedUser.branch_id,
+            branch_name: branchName,
+            branch_parent_id: branchParentId,
+            username: parsedUser.username,
+            active: parsedUser.active,
+            visibleBranchIds: visibleBranchIds,
+            isHeadquartersAdmin: storedRole === 'admin' && !branchParentId,
+            isSuperAdmin: !parsedUser.branch_id
+          }
+          
+          console.log('🟢 [AUTH] Profile definido a partir do localStorage:', newProfile)
+          setProfile(newProfile)
+        } catch (parseError) {
+          console.error('🔴 [AUTH] Erro ao fazer parse do localStorage:', parseError)
+          localStorage.removeItem('church_user')
+          localStorage.removeItem('church_role')
+          setProfile(null)
         }
-        
-        if (visibleBranchIds.length === 0 && parsedUser.branch_id) {
-          visibleBranchIds = [parsedUser.branch_id]
-        }
-        
-        setProfile({
-          id: parsedUser.id,
-          full_name: parsedUser.full_name,
-          role: storedRole,
-          branch_id: parsedUser.branch_id,
-          branch_name: branchName,
-          branch_parent_id: branchParentId,
-          username: parsedUser.username,
-          active: parsedUser.active,
-          visibleBranchIds: visibleBranchIds,
-          isHeadquartersAdmin: storedRole === 'admin' && !branchParentId,
-          isSuperAdmin: !parsedUser.branch_id
-        })
       } else {
+        console.log('🟡 [AUTH] Nenhum utilizador encontrado no localStorage')
         setProfile(null)
       }
     }

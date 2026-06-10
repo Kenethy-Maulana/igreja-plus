@@ -17,6 +17,7 @@ import Escalas from './pages/escalas/Escalas'
 import Register from './pages/auth/Register' 
 import Profile from './pages/profile/Profile'
 import Reports from './pages/reports/Reports'
+import Chat from './pages/chat/Chat'
 
 function App() {
   const [showSplash, setShowSplash] = useState(true)
@@ -41,6 +42,7 @@ function App() {
       {/* Rotas da aplicação */}
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/register" element={<Register />} />
@@ -60,3 +62,4 @@ function App() {
 }
 
 export default App
+//git remote add origin https://github.com/Kenethy-Maulana/igreja-plus.git

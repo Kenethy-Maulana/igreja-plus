@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
+import { supabase } from '../supabase/client'
 
 function Navbar() {
   const auth = useAuth()
@@ -21,17 +22,80 @@ function Navbar() {
   
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
+  
+  // Estados para Notificações
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const notificationsRef = useRef(null)
 
-  // Fechar dropdown ao clicar fora
+  // Fechar dropdowns ao clicar fora
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setDropdownOpen(false)
       }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+        setShowNotifications(false)
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Buscar notificações em tempo real
+  useEffect(() => {
+    if (!profile?.id) return
+
+    const fetchNotifications = async () => {
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false })
+        .limit(10)
+      
+      if (data) {
+        setNotifications(data)
+        setUnreadCount(data.filter(n => !n.is_read).length)
+      }
+    }
+
+    fetchNotifications()
+
+    // Inscrição em Tempo Real (Realtime)
+    const channel = supabase
+      .channel('notifications-channel')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${profile.id}` }, 
+        (payload) => {
+          setNotifications(prev => [payload.new, ...prev])
+          setUnreadCount(prev => prev + 1)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [profile?.id])
+
+  const markAsRead = async (id) => {
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+    setUnreadCount(prev => Math.max(0, prev - 1))
+  }
+
+  const markAllAsRead = async () => {
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', profile.id)
+      .eq('is_read', false)
+    
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+    setUnreadCount(0)
+  }
 
   const handleLogout = async () => {
     if (auth?.logout) {
@@ -64,6 +128,16 @@ function Navbar() {
     return labels[role] || role
   }
 
+  const getNotificationIcon = (type) => {
+    const icons = {
+      event: '📅',
+      schedule: '⛪',
+      system: '🔔',
+      member: '👤',
+    }
+    return icons[type] || '🔔'
+  }
+
   return (
     <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl shadow-md flex items-center justify-between transition">
       <div>
@@ -89,13 +163,98 @@ function Navbar() {
           )}
         </button>
 
-        {/* Botão de Notificações */}
-        <button className="relative w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition">
-          <Bell className="text-gray-700 dark:text-white" size={20} />
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
-            1
-          </span>
-        </button>
+        {/* 🔔 Botão de Notificações com Dropdown */}
+        <div className="relative" ref={notificationsRef}>
+          <button 
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+          >
+            <Bell className="text-gray-700 dark:text-white" size={20} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold animate-pulse">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* Dropdown de Notificações */}
+          {showNotifications && (
+            <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 max-h-[500px] overflow-hidden animate-dropdown">
+              {/* Header */}
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+                <h3 className="font-bold text-lg">Notificações</h3>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition"
+                  >
+                    Marcar todas como lidas
+                  </button>
+                )}
+              </div>
+
+              {/* Lista de Notificações */}
+              <div className="max-h-[400px] overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <Bell className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">Sem notificações novas</p>
+                  </div>
+                ) : (
+                  notifications.map((notif) => (
+                    <div 
+                      key={notif.id} 
+                      onClick={() => markAsRead(notif.id)}
+                      className={`p-4 border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition ${
+                        !notif.is_read ? 'bg-purple-50 dark:bg-purple-900/20 border-l-4 border-l-purple-600' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="text-2xl flex-shrink-0">
+                          {getNotificationIcon(notif.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-bold mb-1 ${
+                            !notif.is_read ? 'text-purple-600 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'
+                          }`}>
+                            {notif.title}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                            {notif.message}
+                          </p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                            {new Date(notif.created_at).toLocaleDateString('pt-PT', { 
+                              day: '2-digit', 
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                        {!notif.is_read && (
+                          <div className="w-2 h-2 bg-purple-600 rounded-full flex-shrink-0 mt-2"></div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Footer */}
+              {notifications.length > 0 && (
+                <div className="p-3 border-t border-gray-200 dark:border-gray-700 text-center">
+                  <Link
+                    to="/notifications"
+                    onClick={() => setShowNotifications(false)}
+                    className="text-sm text-purple-600 dark:text-purple-400 hover:underline font-medium"
+                  >
+                    Ver todas as notificações
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* 🔒 DROPDOWN DE PERFIL */}
         <div className="relative" ref={dropdownRef}>
@@ -233,6 +392,12 @@ function Navbar() {
         }
         .animate-dropdown {
           animation: dropdown 0.2s ease-out;
+        }
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
         }
       `}</style>
     </div>

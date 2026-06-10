@@ -88,7 +88,9 @@ function Login() {
       
       toast.success(`Bem-vindo, ${data.full_name}!`)
       setLoading(false)
-      navigate('/dashboard', { replace: true })
+      
+      // 🔒 CORREÇÃO: Usar window.location para forçar o AuthContext a recarregar e ler o novo localStorage
+      window.location.href = '/dashboard'
       
     } catch (err) {
       console.error('🔴 [LOGIN] Erro inesperado:', err)

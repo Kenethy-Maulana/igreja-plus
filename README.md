@@ -1,16 +1,58 @@
-# React + Vite
+# 🏛️ Igreja Plus
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Sistema completo de gestão para igrejas, desenvolvido como uma aplicação web moderna, responsiva e com arquitetura Multi-Tenant (SaaS).
 
-Currently, two official plugins are available:
+🔗 **Demonstração Online (Deploy):** [https://igreja-plus.vercel.app](https://igreja-plus.vercel.app) *(substitui pelo teu link real da Vercel)*
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## 📋 Funcionalidades Principais
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- ✅ **Gestão Multi-Tenant:** Isolamento total de dados entre diferentes igrejas (Sede e Filiais).
+- ✅ **Dashboard Interativo:** Métricas em tempo real de membros, finanças e ministérios.
+- ✅ **Gestão de Membros:** Cadastro completo, histórico e vinculação a ministérios.
+- ✅ **Controlo Financeiro:** Registo de dízimos, ofertas, despesas e saldos.
+- ✅ **Eventos e Escalas:** Agendamento de cultos com definição de MCs e pregadores.
+- ✅ **Relatórios em PDF:** Geração de relatórios profissionais e detalhados.
+- ✅ **Perfil de Utilizador:** Gestão de dados pessoais e upload de avatar.
+- ✅ **Dark Mode:** Suporte nativo a tema claro e escuro.
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🚀 Tecnologias Utilizadas
+
+### Frontend
+- **React 18** (Biblioteca de Interface)
+- **Vite** (Build Tool e Dev Server)
+- **TailwindCSS** (Estilização Utility-First)
+- **React Router DOM** (Roteamento de Páginas)
+- **Lucide React** (Ícones)
+- **jsPDF & jspdf-autotable** (Geração de Relatórios PDF)
+
+### Backend & Infraestrutura
+- **Supabase** (Backend-as-a-Service)
+- **PostgreSQL** (Base de Dados Relacional)
+- **Supabase Auth** (Autenticação e Gestão de Sessões)
+- **Supabase Storage** (Armazenamento de Imagens/Avatares)
+- **Vercel** (Hospedagem e Deploy Contínuo)
+
+---
+
+## ⚙️ Pré-requisitos
+
+Antes de começar, certifica-te de que tens instalado no teu computador:
+- [Node.js](https://nodejs.org/) (versão 18 ou superior)
+- [Git](https://git-scm.com/)
+- Um editor de código (ex: [VS Code](https://code.visualstudio.com/))
+- Uma conta no [Supabase](https://supabase.com/) (para as variáveis de ambiente)
+
+---
+
+## 🛠️ Instruções Passo a Passo para Execução Local
+
+Sigue estes passos para configurar e executar o ecossistema no teu ambiente de desenvolvimento:
+
+### 1. Clonar o Repositório
+Abre o teu terminal e executa o seguinte comando para copiar o código para a tua máquina:
+```bash
+git clone https://github.com/Kenethy-Maulana/igreja-plus.git

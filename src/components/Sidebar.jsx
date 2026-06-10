@@ -12,6 +12,7 @@ import {
   QrCode,
   LogOut,
   FileText,
+  MessageCircle,
 } from 'lucide-react'
 import { supabase } from '../supabase/client'
 import { useAuth } from '../contexts/AuthContext'
@@ -66,6 +67,15 @@ function Sidebar() {
         >
           <LayoutDashboard size={20} />
           Dashboard
+        </Link>
+
+        {/* 💬 CHAT DA IGREJA - Todos os utilizadores */}
+        <Link
+          to="/chat"
+          className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-purple-700 transition"
+        >
+          <MessageCircle size={20} />
+          Chat da Igreja
         </Link>
 
         {/* 🔒 UTILIZADORES - Admin e Pastor */}
